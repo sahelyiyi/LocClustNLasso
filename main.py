@@ -2,9 +2,20 @@ import numpy as np
 
 N = 10  # nr of nodes in chain
 K = 100  # nr of iterations used for nLasso
+E = N-1  # nr of edges in chain
 
-B = np.diag(np.ones(N), 0) - np.diag(np.ones(N-1), 1)  # incidence matrix
-B = B[0:(N-1), :]
+# Creating B matrix
+B = np.diag(np.ones(N), 0) - np.diag(np.ones(E), 1)  # incidence matrix
+B = B[0:(E), :]
+# ---------------------
+# B1 = np.zeros((N, E))
+# for i in range(N):
+#     B1[i, i] = 1
+#     if i < N-1:
+#         B1[i, i+1] = -1
+#     else:
+#         B1[i, 0] = -1
+
 
 Lambda = 1*np.diag(1./(np.sum(abs(B), 1)))
 Gamma_vec = (1./(np.sum(abs(B), 0))).T  # \in [0, 1]
@@ -16,12 +27,18 @@ c1 = 1
 c2 = 0
 graphsig = c1*cluster1 + c2*cluster2
 
-weight = np.eye(N-1, N-1)
+# Creating weight_vec
+weight = np.eye(E, E)
 weight_vec = np.array([1./x for x in range(1, N)])
-weight_vec = (5.0/4)*np.ones(N-1)
+weight_vec = (5.0/4)*np.ones(E)
 eta = 1/4
 eta = 1
 weight_vec[1] = eta
+# ----------------------
+# weight_vec = weight_vec = (5.0/4)*np.ones(E)
+# weight_vec[1] = eta
+
+
 weight = np.diag(weight_vec)
 
 lambda_nLasso = 1/3  # nLasso parameter
@@ -31,12 +48,15 @@ D = np.dot(weight, B)
 
 primSLP = np.ones(N)
 primSLP[N-1] = 0
-dualSLP = np.array([x/(N-1) for x in range(1, N)])
+dualSLP = np.array([x/(E-1) for x in range(0, E)])
 
 hatx = np.zeros(N)
 prevx = np.zeros(N)
-haty = np.array([x/(N-1) for x in range(1, N)])
+haty = np.array([x/(E-1) for x in range(0, E)])
+
+# Define sampling set
 samplingset = [0]
+# ------------------
 
 seednodesindicator= np.zeros(N)
 seednodesindicator[samplingset] = 1
@@ -52,7 +72,7 @@ log_conv= np.zeros(K)
 log_bound= np.zeros(K)
 newx = 0*hatx
 
-hist_y = np.zeros((K, N-1))
+hist_y = np.zeros((K, E))
 hist_x = np.zeros((K, N))
 
 alpha = 1/10
@@ -63,7 +83,7 @@ for iterk in range(K):
     # tildex = 2 * newx - hatx
     tildex = 2 * hatx - prevx
     newy = haty + (1 / 2) * np.dot(B, tildex)  # chould be negative
-    haty = newy / np.maximum(abs(newy) / (lambda_nLasso * weight_vec), np.ones(N - 1))  # could be negative
+    haty = newy / np.maximum(abs(newy) / (lambda_nLasso * weight_vec), np.ones(E))  # could be negative
 
     newx = hatx - Gamma_vec * np.dot(B.T, haty)  # could  be negative
 
