@@ -16,17 +16,6 @@ B = B[0:(E), :]
 #     else:
 #         B1[i, 0] = -1
 
-
-Lambda = 1*np.diag(1./(np.sum(abs(B), 1)))
-Gamma_vec = (1./(np.sum(abs(B), 0))).T  # \in [0, 1]
-Gamma = np.diag(Gamma_vec)
-
-cluster1 = np.concatenate((np.ones(int(N/2)), np.zeros(int(N/2))))
-cluster2 = np.concatenate((np.zeros(int(N/2)), np.ones(int(N/2))))
-c1 = 1
-c2 = 0
-graphsig = c1*cluster1 + c2*cluster2
-
 # Creating weight_vec
 weight = np.eye(E, E)
 weight_vec = np.array([1./x for x in range(1, N)])
@@ -39,12 +28,13 @@ weight_vec[1] = eta
 # weight_vec[1] = eta
 
 
+Lambda = np.diag(1./(np.sum(abs(B), 1)))
+Gamma_vec = (1./(np.sum(abs(B), 0))).T  # \in [0, 1]
+Gamma = np.diag(Gamma_vec)
+
 weight = np.diag(weight_vec)
 
 lambda_nLasso = 1/3  # nLasso parameter
-anal_sig = (c1 - lambda_nLasso*eta)*cluster1 + (c2 + lambda_nLasso*eta)*cluster2
-
-D = np.dot(weight, B)
 
 primSLP = np.ones(N)
 primSLP[N-1] = 0
