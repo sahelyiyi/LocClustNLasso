@@ -1,4 +1,5 @@
 import numpy as np
+import random
 from math import sqrt
 from collections import defaultdict, Counter
 
@@ -31,6 +32,7 @@ for merge_cell in sorted_merged:
     mean_merged.append((np.mean(merge_cell[:, 1]), np.mean(merge_cell[:, 2])))
 
 E = 0
+MAX_DIST = 0.01
 neighbours = defaultdict(list)
 degrees = Counter()
 for i in range(len(mean_merged)):
@@ -40,13 +42,13 @@ for i in range(len(mean_merged)):
     for j in range(i+1, len(mean_merged)):
         lat2, long2 = mean_merged[j][0], mean_merged[j][1]
         dist = sqrt((lat1-lat2)**2 + (long1-long2)**2)
-        if dist > 0.01:
+        if dist >= MAX_DIST:
             break
         if dist == 0:
             continue
         if ((lat2, long2), dist) in neighbours[(lat1, long1)]:
             continue
-        neighbours[(lat1, long1)].append(((lat2, long2), dist))
+        neighbours[(lat1, long1)].append(((lat2, long2), MAX_DIST-dist))
         degrees[(lat1, long1)] += 1
         degrees[(lat2, long2)] += 1
         E += 1
@@ -65,13 +67,13 @@ for i in range(len(mean_merged)):
     for j in range(i + 1, len(mean_merged)):
         lat2, long2 = mean_merged[j][0], mean_merged[j][1]
         dist = sqrt((lat1 - lat2) ** 2 + (long1 - long2) ** 2)
-        if dist > 0.01:
+        if dist >= MAX_DIST:
             break
         if dist == 0:
             continue
         if ((lat2, long2), dist) in neighbours[(lat1, long1)]:
             continue
-        neighbours[(lat1, long1)].append(((lat2, long2), dist))
+        neighbours[(lat1, long1)].append(((lat2, long2), MAX_DIST-dist))
         degrees[(lat1, long1)] += 1
         degrees[(lat2, long2)] += 1
         E += 1
@@ -100,7 +102,8 @@ for i, item in enumerate(mean_merged):
     Y[idx] = np.array([sorted_merged[i][:, 3]]).T
 
 m, n = X[0].shape
-
+M = [i for i in range(N)]
+M = random.choices([i for i in range(N)], k=100000)
 
 B = np.zeros((E, N))
 D = np.zeros((E, N))
@@ -141,9 +144,9 @@ new_w = np.array([np.zeros(n) for i in range(N)])
 prev_w = np.array([np.zeros(n) for i in range(N)])
 new_u = np.array([np.zeros(n) for i in range(E)])
 
-K = 100
+K = 500
 for iterk in range(K):
-    # print ('iter:', iterk)
+    print ('iter:', iterk)
 
     tilde_w = 2 * hat_w - prev_w
     new_u = new_u + np.dot(Sigma, np.dot(D, tilde_w))  # chould be negative
@@ -151,23 +154,29 @@ for iterk in range(K):
     hat_w = new_w - np.dot(Gamma, np.dot(D.T, new_u))  # could  be negative
 
     for i in range(N):
-        mtx1 = 1.8 * np.dot(X[i].T, X[i]).astype('float64')
-        if mtx1.shape:
-            mtx1 += Gamma_vec[i] * np.eye(mtx1.shape[0])
-            mtx_inv = np.linalg.inv(mtx1)
+        if i in M:
+            mtx1 = 1.8 * np.dot(X[i].T, X[i]).astype('float64')
+            if mtx1.shape:
+                mtx1 += Gamma_vec[i] * np.eye(mtx1.shape[0])
+                mtx_inv = np.linalg.inv(mtx1)
+            else:
+                mtx1 += Gamma_vec[i]
+                mtx_inv = 1.0 / mtx1
+
+            # mtx2 = Gamma_vec[i] * hat_w[i] + 1.8 * np.dot(X[i].T, Y[i])
+            mtx2 = Gamma_vec[i] * hat_w[i] + 1.8 * np.dot(X[i].T, Y[i]).T[0]
+
+            new_w[i] = np.dot(mtx_inv, mtx2)
         else:
-            mtx1 += Gamma_vec[i]
-            mtx_inv = 1.0 / mtx1
-
-        # mtx2 = Gamma_vec[i] * hat_w[i] + 1.8 * np.dot(X[i].T, Y[i])
-        mtx2 = Gamma_vec[i] * hat_w[i] + 1.8 * np.dot(X[i].T, Y[i]).T[0]
-
-        new_w[i] = np.dot(mtx_inv, mtx2)
+            new_w[i] = hat_w[i]
     prev_w = np.copy(new_w)
 
-# mse = 0
-# for i in range(N):
-#     # print (Y[i].T[0], np.dot(X[i], new_w[i]), Y[i].T[0] - np.dot(X[i], new_w[i]))
-#     mse += np.linalg.norm(Y[i].T[0] - np.dot(X[i], new_w[i]))
-# mse /= N
+mse = 0
+mse1 = 0
+for i in range(N):
+    # print (Y[i].T[0], np.dot(X[i], new_w[i]), Y[i].T[0] - np.dot(X[i], new_w[i]))
+    mse1 += np.linalg.norm(Y[i].T[0] - np.dot(X[i], new_w[i]))
+    mse += (np.linalg.norm(Y[i] - np.dot(X[i], new_w[i])) / np.linalg.norm(Y[i]))
+mse /= (m*N)
+mse1 /= (m*N)
 

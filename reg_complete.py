@@ -1,11 +1,13 @@
 import numpy as np
+import random
 from math import sqrt
 from collections import defaultdict, Counter
 
-N = 10  # nr of nodes in chain
+N = 300  # nr of nodes in chain
 K = 100  # nr of iterations used for nLasso
 E = int(N * (N-1) / 2)
-
+M = random.choices([i for i in range(N)], k=int(0.1*N))
+# M = [i for i in range(N)]
 
 Y = np.array([[2] for i in range(N)])
 X = np.array([[[1, 1, 1]] for i in range(N)])
@@ -37,7 +39,8 @@ new_w = np.array([np.zeros(n) for i in range(N)])
 prev_w = np.array([np.zeros(n) for i in range(N)])
 new_u = np.array([np.zeros(n) for i in range(E)])
 
-K = 100
+K = 300
+# 1.0913559876627825e-07
 for iterk in range(K):
     print ('iter:', iterk)
 
@@ -47,17 +50,20 @@ for iterk in range(K):
     hat_w = new_w - np.dot(Gamma, np.dot(D.T, new_u))  # could  be negative
 
     for i in range(N):
-        mtx1 = 1.8 * np.dot(X[i].T, X[i]).astype('float64')
-        if mtx1.shape:
-            mtx1 += Gamma_vec[i] * np.eye(mtx1.shape[0])
-            mtx_inv = np.linalg.inv(mtx1)
+        if i in M:
+            mtx1 = 1.8 * np.dot(X[i].T, X[i]).astype('float64')
+            if mtx1.shape:
+                mtx1 += Gamma_vec[i] * np.eye(mtx1.shape[0])
+                mtx_inv = np.linalg.inv(mtx1)
+            else:
+                mtx1 += Gamma_vec[i]
+                mtx_inv = 1.0 / mtx1
+
+            mtx2 = Gamma_vec[i] * hat_w[i] + 1.8 * np.dot(X[i].T, Y[i])
+
+            new_w[i] = np.dot(mtx_inv, mtx2)
         else:
-            mtx1 += Gamma_vec[i]
-            mtx_inv = 1.0 / mtx1
-
-        mtx2 = Gamma_vec[i] * hat_w[i] + 1.8 * np.dot(X[i].T, Y[i])
-
-        new_w[i] = np.dot(mtx_inv, mtx2)
+            new_w[i] = hat_w[i]
     prev_w = np.copy(new_w)
 
 mse = 0
