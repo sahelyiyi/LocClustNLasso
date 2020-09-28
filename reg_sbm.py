@@ -63,6 +63,7 @@ def run(K=300, N1=150, N2=150):
         # print ('iter:', iterk)
 
         tilde_w = 2 * hat_w - prev_w
+        prev_w = np.copy(new_w)
         new_u = new_u + np.dot(Sigma, np.dot(D, tilde_w))  # chould be negative
 
         hat_w = new_w - np.dot(Gamma, np.dot(D.T, new_u))  # could  be negative
@@ -82,7 +83,6 @@ def run(K=300, N1=150, N2=150):
                 new_w[i] = np.dot(mtx_inv, mtx2)
             else:
                 new_w[i] = hat_w[i]
-        prev_w = np.copy(new_w)
 
         our_mse = 0
         for i in range(N):
@@ -90,6 +90,8 @@ def run(K=300, N1=150, N2=150):
             our_mse += (np.linalg.norm(Y[i] - np.dot(X[i], new_w[i])) / np.linalg.norm(Y[i]))
         our_mse /= N
         our_mses.append(our_mse)
+
+    print ('check convergence', np.max(abs(new_w - prev_w)))
 
     x = np.sum(X, 1)
     y = np.sum(Y, 1)
