@@ -5,7 +5,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import accuracy_score
 
 
-def run(K=100, N1=100, N2=100, alpha=6, M=0.3):
+def run(K=100, N1=100, N2=100, alpha=6, M=0.005):
     # Creating B matrix
     B, weight_vec = get_B_and_weight_vec(N1, N2, mu_in=2, mu_out=0.5)
 
@@ -64,7 +64,7 @@ def run(K=100, N1=100, N2=100, alpha=6, M=0.3):
 
     if np.max(abs(newx-prevx)) > 1e-4:
         raise Exception('increase iterations')
-    
+
     kmeans = KMeans(n_clusters=2, random_state=0).fit(newx.reshape(len(newx), 1))
     predicted_labels = kmeans.labels_
     true_labels = [1 for i in range(N1)] + [0 for i in range(N2)]
