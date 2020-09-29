@@ -1,15 +1,25 @@
 import numpy as np
 import random
 from stochastic_block_model import get_B_and_weight_vec
+from sbm import SBM
 from sklearn.cluster import KMeans
 from sklearn.metrics import accuracy_score
 
 
-def run(K=100, N1=100, N2=100, alpha=6, M=0.005):
+def run(K=100, N1=100, N2=100, alpha=6, M=0.005, lambda_nLasso = 1/25):
     # Creating B matrix
-    B, weight_vec = get_B_and_weight_vec(N1, N2, mu_in=2, mu_out=0.5)
+    K = 2000
+    alpha = 0.001
+    M = 0.5
+    lambda_nLasso = 1
+
+    # B, weight_vec = get_B_and_weight_vec(N1, N2, mu_in=2, mu_out=0.5, pin=0.7, pout=0.001)
+
+    model = SBM(N1+N2, 2, [1 for i in range(N1)] + [0 for i in range(N2)], pin=0.2, pout=0.02)
+    B = model.B
 
     E, N = B.shape
+    weight_vec = np.ones(E)
 
     Gamma_vec = (1./(np.sum(abs(B), 0))).T  # \in [0, 1]
     Gamma = np.diag(Gamma_vec)
@@ -20,9 +30,7 @@ def run(K=100, N1=100, N2=100, alpha=6, M=0.005):
         print (np.linalg.norm(np.dot(Sigma**0.5, B).dot(Gamma**0.5), 2))
         raise Exception('norm is greater than 1')
 
-    lambda_nLasso = 1/25  # nLasso parameter
-
-    samplingset = random.choices([i for i in range(N)], k=int(M*N))
+    samplingset = random.choices([i for i in range(N1)], k=int(M*N))
 
     seednodesindicator= np.zeros(N)
     seednodesindicator[samplingset] = 1
@@ -30,16 +38,16 @@ def run(K=100, N1=100, N2=100, alpha=6, M=0.005):
     noseednodeindicator[samplingset] = 0
 
     s = 0.0
-    for i in range(len(B)):
-        i = np.where(B[i] == -1)[0][0]
-        j = np.where(B[i] == 1)[0][0]
+    for item in range(len(B)):
+        i = np.where(B[item] == -1)[0][0]
+        j = np.where(B[item] == 1)[0][0]
         if i < N1 <= j:
             s += weight_vec[i]
         if i >= N1 > j:
             s += weight_vec[i]
 
-    if lambda_nLasso * s >= alpha * N2 / 2:
-        raise Exception('error')
+    # if lambda_nLasso * s >= alpha * N2 / 2:
+    #     raise Exception('error')
 
     fac_alpha = 1./(Gamma_vec*alpha+1)  # \in [0, 1]
 
@@ -68,7 +76,5 @@ def run(K=100, N1=100, N2=100, alpha=6, M=0.005):
     kmeans = KMeans(n_clusters=2, random_state=0).fit(newx.reshape(len(newx), 1))
     predicted_labels = kmeans.labels_
     true_labels = [1 for i in range(N1)] + [0 for i in range(N2)]
-    acc1 = accuracy_score(true_labels, predicted_labels)
-    true_labels = [0 for i in range(N1)] + [1 for i in range(N2)]
-    acc2 = accuracy_score(true_labels, predicted_labels)
-    return max(acc1, acc2)
+    acc = accuracy_score(true_labels, predicted_labels)
+    return newx
