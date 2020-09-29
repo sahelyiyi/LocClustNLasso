@@ -7,17 +7,28 @@ from sklearn.metrics import accuracy_score
 
 
 def run(K=100, N1=100, N2=100, alpha=6, M=0.005, lambda_nLasso = 1/25):
-    # Creating B matrix
-    K = 1000
-    # alpha = 0.001
-    alpha = 0.4
+
+    # parameters for M=0.6
     M = 0.6
-    # lambda_nLasso = 1
-    lambda_nLasso = 1/25
+    K = 500
+    alpha = 0.4
+    lambda_nLasso = 1/50
+
+    # parameters for M=0.3
+    M = 0.3
+    K = 1500
+    alpha = 0.1  # 0.09
+    lambda_nLasso = 1/100
+
+    # parameters for M = 0.2
+    M = 0.2
+    K = 4000
+    alpha = 0.01
+    lambda_nLasso = 1/500
 
     # B, weight_vec = get_B_and_weight_vec(N1, N2, mu_in=2, mu_out=0.5, pin=0.2, pout=0.02)
 
-    model = SBM(N1+N2, 2, [1 for i in range(N1)] + [0 for i in range(N2)], pin=0.2, pout=0.02)
+    model = SBM(N1+N2, 2, [1 for i in range(N1)] + [0 for i in range(N2)], pin=0.2, pout=0.01)
     B = model.B
 
     E, N = B.shape
