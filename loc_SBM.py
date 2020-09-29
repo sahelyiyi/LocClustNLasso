@@ -11,7 +11,7 @@ def run(K=100, N1=100, N2=100, alpha=6, M=0.005, lambda_nLasso = 1/25):
     K = 1000
     # alpha = 0.001
     alpha = 0.4
-    M = 0.3
+    M = 0.6
     # lambda_nLasso = 1
     lambda_nLasso = 1/25
 
@@ -32,7 +32,7 @@ def run(K=100, N1=100, N2=100, alpha=6, M=0.005, lambda_nLasso = 1/25):
         print (np.linalg.norm(np.dot(Sigma**0.5, B).dot(Gamma**0.5), 2))
         raise Exception('norm is greater than 1')
 
-    samplingset = random.choices([i for i in range(N1)], k=int(M*N))
+    samplingset = random.choices([i for i in range(N1)], k=int(M*N1))
 
     seednodesindicator= np.zeros(N)
     seednodesindicator[samplingset] = 1
