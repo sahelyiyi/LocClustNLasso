@@ -8,12 +8,14 @@ from sklearn.metrics import accuracy_score
 
 def run(K=100, N1=100, N2=100, alpha=6, M=0.005, lambda_nLasso = 1/25):
     # Creating B matrix
-    K = 2000
-    alpha = 0.001
-    M = 0.5
-    lambda_nLasso = 1
+    K = 1000
+    # alpha = 0.001
+    alpha = 0.4
+    M = 0.3
+    # lambda_nLasso = 1
+    lambda_nLasso = 1/25
 
-    # B, weight_vec = get_B_and_weight_vec(N1, N2, mu_in=2, mu_out=0.5, pin=0.7, pout=0.001)
+    # B, weight_vec = get_B_and_weight_vec(N1, N2, mu_in=2, mu_out=0.5, pin=0.2, pout=0.02)
 
     model = SBM(N1+N2, 2, [1 for i in range(N1)] + [0 for i in range(N2)], pin=0.2, pout=0.02)
     B = model.B
@@ -46,8 +48,8 @@ def run(K=100, N1=100, N2=100, alpha=6, M=0.005, lambda_nLasso = 1/25):
         if i >= N1 > j:
             s += weight_vec[i]
 
-    # if lambda_nLasso * s >= alpha * N2 / 2:
-    #     raise Exception('error')
+    if lambda_nLasso * s >= alpha * N2 / 2:
+        raise Exception('error')
 
     fac_alpha = 1./(Gamma_vec*alpha+1)  # \in [0, 1]
 

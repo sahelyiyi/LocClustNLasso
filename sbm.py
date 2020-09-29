@@ -24,8 +24,8 @@ class SBM(object):
         cnt = 0
         for item in np.argwhere(self.block_matrix > 0):
             i, j = item
-            # if i > j:
-            #     continue
+            if i > j:
+                print('noooo1')
             if i == j:
                 print ('nooooo')
             B[cnt, i] = 1
@@ -55,7 +55,10 @@ class SBM(object):
                 val = p_matrix[community_a][community_b]
 
                 if p <= val:
-                    block_matrix[row][col] = 1
+                    if row < col:
+                        block_matrix[row][col] = 1
+                    else:
+                        block_matrix[col][row] = 1
 
         return block_matrix
 
