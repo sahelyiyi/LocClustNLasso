@@ -23,8 +23,8 @@ def run(K=100, N1=100, N2=100, alpha=6, M=0.005, lambda_nLasso = 1/25):
     # parameters for M = 0.2
     M = 0.2
     K = 4000
-    alpha = 0.01
-    lambda_nLasso = 1/500
+    alpha = 0.025
+    lambda_nLasso = 1/200
 
     # B, weight_vec = get_B_and_weight_vec(N1, N2, mu_in=2, mu_out=0.5, pin=0.2, pout=0.02)
 
@@ -60,6 +60,7 @@ def run(K=100, N1=100, N2=100, alpha=6, M=0.005, lambda_nLasso = 1/25):
             s += weight_vec[i]
 
     if lambda_nLasso * s >= alpha * N2 / 2:
+        print (lambda_nLasso * s, alpha * N2 / 2)
         raise Exception('error')
 
     fac_alpha = 1./(Gamma_vec*alpha+1)  # \in [0, 1]
@@ -86,8 +87,11 @@ def run(K=100, N1=100, N2=100, alpha=6, M=0.005, lambda_nLasso = 1/25):
     if np.max(abs(newx-prevx)) > 1e-4:
         raise Exception('increase iterations')
 
-    kmeans = KMeans(n_clusters=2, random_state=0).fit(newx.reshape(len(newx), 1))
-    predicted_labels = kmeans.labels_
+    # kmeans = KMeans(n_clusters=2, random_state=0).fit(newx.reshape(len(newx), 1))
+    # predicted_labels = kmeans.labels_
+    predicted_labels = np.copy(newx)
+    predicted_labels[predicted_labels < 0.5] = 0
+    predicted_labels[predicted_labels >= 0.5] = 1
     true_labels = [1 for i in range(N1)] + [0 for i in range(N2)]
     acc = accuracy_score(true_labels, predicted_labels)
-    return newx
+    return newx, acc
