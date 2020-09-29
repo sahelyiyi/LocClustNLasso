@@ -4,6 +4,8 @@ from stochastic_block_model import get_B_and_weight_vec
 from sbm import SBM
 from sklearn.cluster import KMeans
 from sklearn.metrics import accuracy_score
+import networkx as nx
+import localgraphclustering as lgc
 
 
 def run(K=100, N1=100, N2=100, alpha=6, M=0.005, lambda_nLasso = 1/25):
@@ -94,4 +96,48 @@ def run(K=100, N1=100, N2=100, alpha=6, M=0.005, lambda_nLasso = 1/25):
     predicted_labels[predicted_labels >= 0.5] = 1
     true_labels = [1 for i in range(N1)] + [0 for i in range(N2)]
     acc = accuracy_score(true_labels, predicted_labels)
-    return newx, acc
+    return newx, acc, model, samplingset
+
+
+def calculate_acc(clusterout, gr, N1, N2):
+    xhat1 = np.zeros((len(list(gr.nodes)), 1))
+
+    for nodei in clusterout:
+        xhat1[nodei] = 1
+
+    true_labels = [1 for i in range(N1)] + [0 for i in range(N2)]
+    acc1 = accuracy_score(true_labels, xhat1)
+
+    true_labels = [0 for i in range(N1)] + [1 for i in range(N2)]
+    acc2 = accuracy_score(true_labels, xhat1)
+
+    acc = max(acc1, acc2)
+    return acc
+
+
+def compare(N1=100, N2=100):
+    newx, acc, model, seednodes = run(N1=N1, N2=N2)
+    print ('our method accuracy is', acc)
+
+    adjacency_matrix = model.block_matrix
+    rows, cols = np.where(adjacency_matrix == 1)
+    edges = zip(rows.tolist(), cols.tolist())
+    gr = nx.Graph()
+    gr.add_edges_from(edges)
+
+    Glgc = lgc.GraphLocal.from_networkx(gr.to_undirected())
+
+    acl = lgc.approximate_PageRank_weighted(Glgc, seednodes)
+    approximate_PageRank_acc = calculate_acc(acl[0], gr, N1, N2)
+    print ('approximate_PageRank_weighted accuracy is', approximate_PageRank_acc)
+
+    acl = lgc.capacity_releasing_diffusion(Glgc, seednodes)
+    capacity_releasing_acc = calculate_acc(acl[0], gr, N1, N2)
+    print ('capacity_releasing_diffusion accuracy is', capacity_releasing_acc)
+
+    Sacl, condacl = lgc.spectral_clustering(Glgc, seednodes, method="acl")  # one step
+    Smqi, condmqi = lgc.flow_clustering(Glgc, Sacl, method="mqi")
+    flow_acc = calculate_acc(Smqi, gr, N1, N2)
+    print ('flow_clustering accuracy is', flow_acc)
+
+
