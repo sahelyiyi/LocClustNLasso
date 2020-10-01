@@ -3,7 +3,7 @@ from graspy.simulations import sbm
 import numpy as np
 
 
-def get_B_and_weight_vec(n1=50, n2=50, pin=0.7, pout=0.01, mu_in=8, mu_out=2):
+def get_B_and_weight_vec(n1=50, n2=50, pin=0.5, pout=0.01, mu_in=8, mu_out=2):
     n = [n1, n2]
     p = [[pin, pout],
          [pout, pin]]
