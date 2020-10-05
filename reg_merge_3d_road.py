@@ -106,7 +106,7 @@ M = [i for i in range(N)]
 M = random.choices([i for i in range(N)], k=100000)
 
 B = np.zeros((E, N))
-D = np.zeros((E, N))
+# D = np.zeros((E, N))
 weight_vec = np.zeros(E)
 cnt = 0
 for item1 in neighbours:
@@ -115,29 +115,30 @@ for item1 in neighbours:
         idx2 = node_indices[item2]
         if idx1 < idx2:
             B[cnt, idx1] = 1
-            D[cnt, idx1] = dist
+            # D[cnt, idx1] = dist
 
             B[cnt, idx2] = -1
-            D[cnt, idx2] = -dist
+            # D[cnt, idx2] = -dist
         else:
             B[cnt, idx1] = -1
-            D[cnt, idx1] = -dist
+            # D[cnt, idx1] = -dist
 
             B[cnt, idx2] = 1
-            D[cnt, idx2] = dist
+            # D[cnt, idx2] = dist
         weight_vec[cnt] = dist
         cnt += 1
+
+D = B
 
 
 weight = np.diag(weight_vec)
 Sigma = np.diag(1./(2*weight_vec))
 
 
-Lambda = 1*np.diag(1./(np.sum(abs(B), 1)))
-Gamma_vec = (.9/(np.sum(abs(B), 0))).T  # \in [0, 1]
+Gamma_vec = (1.0/(np.sum(abs(B), 0))).T  # \in [0, 1]
 Gamma = np.diag(Gamma_vec)
 
-lambda_nLasso = 1/3  # nLasso parameter
+lambda_lasso = 0.1  # nLasso parameter
 
 hat_w = np.array([np.zeros(n) for i in range(N)])
 new_w = np.array([np.zeros(n) for i in range(N)])
@@ -147,36 +148,38 @@ new_u = np.array([np.zeros(n) for i in range(E)])
 K = 500
 for iterk in range(K):
     print ('iter:', iterk)
-
-    tilde_w = 2 * hat_w - prev_w
-    new_u = new_u + np.dot(Sigma, np.dot(D, tilde_w))  # chould be negative
+    prev_w = np.copy(new_w)
 
     hat_w = new_w - np.dot(Gamma, np.dot(D.T, new_u))  # could  be negative
 
     for i in range(N):
         if i in M:
-            mtx1 = 1.8 * np.dot(X[i].T, X[i]).astype('float64')
+            mtx1 = 2 * Gamma_vec[i] * np.dot(X[i].T, X[i]).astype('float64')
             if mtx1.shape:
-                mtx1 += Gamma_vec[i] * np.eye(mtx1.shape[0])
+                mtx1 += 1 * np.eye(mtx1.shape[0])
                 mtx_inv = np.linalg.inv(mtx1)
             else:
-                mtx1 += Gamma_vec[i]
+                mtx1 += 1
                 mtx_inv = 1.0 / mtx1
 
-            # mtx2 = Gamma_vec[i] * hat_w[i] + 1.8 * np.dot(X[i].T, Y[i])
             mtx2 = Gamma_vec[i] * hat_w[i] + 1.8 * np.dot(X[i].T, Y[i]).T[0]
 
             new_w[i] = np.dot(mtx_inv, mtx2)
         else:
             new_w[i] = hat_w[i]
-    prev_w = np.copy(new_w)
 
-mse = 0
-mse1 = 0
+    tilde_w = 2 * new_w - prev_w
+    new_u = new_u + np.dot(Sigma, np.dot(D, tilde_w))  # chould be negative
+
+    normalized_u = np.where(abs(new_u) >= lambda_lasso)
+    new_u[normalized_u] = lambda_lasso * new_u[normalized_u] / abs(new_u[normalized_u])
+
+
+Y_pred = []
 for i in range(N):
-    # print (Y[i].T[0], np.dot(X[i], new_w[i]), Y[i].T[0] - np.dot(X[i], new_w[i]))
-    mse1 += np.linalg.norm(Y[i].T[0] - np.dot(X[i], new_w[i]))
-    mse += (np.linalg.norm(Y[i] - np.dot(X[i], new_w[i])) / np.linalg.norm(Y[i]))
-mse /= (m*N)
-mse1 /= (m*N)
+    Y_pred.append(np.dot(X[i], new_w[i]))
 
+MSE = np.square(np.subtract(Y.reshape(N, 5),Y_pred)).mean()
+NMSE = MSE / np.square(Y).mean()
+# 0.09888933487781885
+print(NMSE)
