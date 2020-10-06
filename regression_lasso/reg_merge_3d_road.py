@@ -2,6 +2,10 @@ import numpy as np
 import random
 from math import sqrt
 from collections import defaultdict, Counter
+from sklearn.linear_model import LinearRegression
+from sklearn.tree import DecisionTreeRegressor
+
+from regression_lasso.main import nmse
 
 
 with open('/Users/sahel/Downloads/3D_spatial_network.txt', 'r') as f:
@@ -102,8 +106,7 @@ for i, item in enumerate(mean_merged):
     Y[idx] = np.array([sorted_merged[i][:, 3]]).T
 
 m, n = X[0].shape
-M = [i for i in range(N)]
-M = random.choices([i for i in range(N)], k=100000)
+samplingset = random.sample([i for i in range(N)], k=int(0.7 * N))
 
 B = np.zeros((E, N))
 # D = np.zeros((E, N))
@@ -139,30 +142,41 @@ Gamma_vec = (1.0/(np.sum(abs(B), 0))).T  # \in [0, 1]
 Gamma = np.diag(Gamma_vec)
 
 lambda_lasso = 0.1  # nLasso parameter
+lambda_lasso = 0.5  # nLasso parameter
 
 hat_w = np.array([np.zeros(n) for i in range(N)])
 new_w = np.array([np.zeros(n) for i in range(N)])
 prev_w = np.array([np.zeros(n) for i in range(N)])
 new_u = np.array([np.zeros(n) for i in range(E)])
 
-K = 500
+
+MTX1_INV = {}
+MTX2 = {}
+for i in samplingset:
+    mtx1 = 2 * Gamma_vec[i] * np.dot(X[i].T, X[i]).astype('float64')
+    if mtx1.shape:
+        mtx1 += 1 * np.eye(mtx1.shape[0])
+        mtx_inv = np.linalg.inv(mtx1)
+    else:
+        mtx1 += 1
+        mtx_inv = 1.0 / mtx1
+    MTX1_INV[i] = mtx_inv
+
+    MTX2[i] = 2 * Gamma_vec[i] * np.dot(X[i].T, Y[i]).T[0]
+
+
+K = 1000
 for iterk in range(K):
-    print ('iter:', iterk)
+    if iterk % 100 == 0:
+        print ('iter:', iterk)
     prev_w = np.copy(new_w)
 
     hat_w = new_w - np.dot(Gamma, np.dot(D.T, new_u))  # could  be negative
 
     for i in range(N):
-        if i in M:
-            mtx1 = 2 * Gamma_vec[i] * np.dot(X[i].T, X[i]).astype('float64')
-            if mtx1.shape:
-                mtx1 += 1 * np.eye(mtx1.shape[0])
-                mtx_inv = np.linalg.inv(mtx1)
-            else:
-                mtx1 += 1
-                mtx_inv = 1.0 / mtx1
-
-            mtx2 = Gamma_vec[i] * hat_w[i] + 1.8 * np.dot(X[i].T, Y[i]).T[0]
+        if i in samplingset:
+            mtx2 = hat_w[i] + MTX2[i]
+            mtx_inv = MTX1_INV[i]
 
             new_w[i] = np.dot(mtx_inv, mtx2)
         else:
@@ -179,7 +193,42 @@ Y_pred = []
 for i in range(N):
     Y_pred.append(np.dot(X[i], new_w[i]))
 
-MSE = np.square(np.subtract(Y.reshape(N, 5),Y_pred)).mean()
-NMSE = MSE / np.square(Y).mean()
-# 0.09888933487781885
-print(NMSE)
+NMSE = nmse(Y.reshape(N, 5),Y_pred)
+print('NMSE', NMSE)
+
+x = np.mean(X, 1)
+y = np.mean(Y, 1)
+model = LinearRegression().fit(x[samplingset], y[samplingset])
+
+linear_regression_score = nmse(y, model.predict(x))
+print('linear_regression_score', linear_regression_score)
+
+y = Y.reshape(-1, 1)
+x = X.reshape(-1, 2)
+decision_tree_samplingset = []
+for item in samplingset:
+    for i in range(m):
+        decision_tree_samplingset.append(m*item+i)
+decision_tree_non_samplingset = [i for i in range(len(x)) if i not in decision_tree_samplingset]
+
+max_depth = 5
+regressor = DecisionTreeRegressor(max_depth=max_depth)
+regressor.fit(x[decision_tree_samplingset], y[decision_tree_samplingset])
+pred_y = regressor.predict(x)
+decision_tree_score = nmse(y, pred_y)
+print ('decision_tree_score', decision_tree_score)
+
+# lambda=0.5, M=0.7
+# NMSE 0.1951459081104319
+# linear_regression_score 0.3727496212594557
+# decision_tree_score 0.5791644863801049
+
+# lambda=0.5, M=0.6
+# NMSE 0.2747315880798612
+# linear_regression_score 0.372930118135755
+# decision_tree_score 0.5804098158147778
+
+# lambda=0.2, M=0.6
+# NMSE 0.2826136578917171
+# linear_regression_score 0.3728432206728896
+# decision_tree_score 0.5802206388501442
