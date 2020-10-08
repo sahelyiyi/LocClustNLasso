@@ -5,7 +5,7 @@ from collections import defaultdict, Counter
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
 
-from regression_lasso.main import nmse
+from regression_lasso.main import nmse_func
 
 
 with open('/Users/sahel/Downloads/3D_spatial_network.txt', 'r') as f:
@@ -142,7 +142,7 @@ Gamma_vec = (1.0/(np.sum(abs(B), 0))).T  # \in [0, 1]
 Gamma = np.diag(Gamma_vec)
 
 lambda_lasso = 0.1  # nLasso parameter
-lambda_lasso = 0.5  # nLasso parameter
+lambda_lasso = 0.08  # nLasso parameter
 
 hat_w = np.array([np.zeros(n) for i in range(N)])
 new_w = np.array([np.zeros(n) for i in range(N)])
@@ -166,6 +166,9 @@ for i in samplingset:
 
 
 K = 1000
+limit = np.array([np.zeros(n) for i in range(E)])
+for i in range(n):
+    limit[:, i] = lambda_lasso*weight_vec
 for iterk in range(K):
     if iterk % 100 == 0:
         print ('iter:', iterk)
@@ -185,22 +188,22 @@ for iterk in range(K):
     tilde_w = 2 * new_w - prev_w
     new_u = new_u + np.dot(Sigma, np.dot(D, tilde_w))  # chould be negative
 
-    normalized_u = np.where(abs(new_u) >= lambda_lasso)
-    new_u[normalized_u] = lambda_lasso * new_u[normalized_u] / abs(new_u[normalized_u])
+    normalized_u = np.where(abs(new_u) >= limit)
+    new_u[normalized_u] = limit[normalized_u] * new_u[normalized_u] / abs(new_u[normalized_u])
 
 
 Y_pred = []
 for i in range(N):
     Y_pred.append(np.dot(X[i], new_w[i]))
 
-NMSE = nmse(Y.reshape(N, 5),Y_pred)
+NMSE = nmse_func(Y.reshape(N, 5), Y_pred)
 print('NMSE', NMSE)
 
 x = np.mean(X, 1)
 y = np.mean(Y, 1)
 model = LinearRegression().fit(x[samplingset], y[samplingset])
 
-linear_regression_score = nmse(y, model.predict(x))
+linear_regression_score = nmse_func(y, model.predict(x))
 print('linear_regression_score', linear_regression_score)
 
 y = Y.reshape(-1, 1)
@@ -215,13 +218,27 @@ max_depth = 5
 regressor = DecisionTreeRegressor(max_depth=max_depth)
 regressor.fit(x[decision_tree_samplingset], y[decision_tree_samplingset])
 pred_y = regressor.predict(x)
-decision_tree_score = nmse(y, pred_y)
+decision_tree_score = nmse_func(y, pred_y)
 print ('decision_tree_score', decision_tree_score)
 
+
+# lambda=1, M=0.7
+# NMSE 0.22784964082832004
+
 # lambda=0.5, M=0.7
-# NMSE 0.1951459081104319
-# linear_regression_score 0.3727496212594557
-# decision_tree_score 0.5791644863801049
+# NMSE 0.2349845635777743
+# linear_regression_score 0.372930118135755
+# decision_tree_score 0.5804098158147778
+
+# lambda=0.1, M=0.7
+# NMSE 0.20356074162702414
+
+
+# lambda=0.08, M=0.7
+# NMSE 0.21768699584301643
+
+# lambda=0.05, M=0.7
+# NMSE 0.22918163759820392
 
 # lambda=0.5, M=0.6
 # NMSE 0.2747315880798612
@@ -230,5 +247,3 @@ print ('decision_tree_score', decision_tree_score)
 
 # lambda=0.2, M=0.6
 # NMSE 0.2826136578917171
-# linear_regression_score 0.3728432206728896
-# decision_tree_score 0.5802206388501442

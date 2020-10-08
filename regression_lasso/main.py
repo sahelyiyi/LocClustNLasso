@@ -1,24 +1,30 @@
 import numpy as np
-from stochastic_block_model import get_B_and_weight_vec
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
-from sklearn.metrics import r2_score, mean_squared_log_error, mean_squared_error
+from sklearn.metrics import r2_score, mean_squared_log_error, mean_squared_error, mean_absolute_error
 import random
 
 
-def nmse(Y, Y_pred):
-    MSE = np.square(np.subtract(Y, Y_pred)).mean()
+def nmse_func(Y, Y_pred):
+    MSE = mean_squared_error(Y, Y_pred)
     NMSE = MSE / np.square(Y).mean()
     return NMSE
 
 
 def run(K, B, weight_vec, Y, X, lambda_lasso=0.1, method=None, M=0.2):
+    functions = {
+        'mean_squared_log_error': mean_squared_log_error,
+        'mean_squared_error': mean_squared_error,
+        'normalized_mean_squared_error': nmse_func,
+        'mean_absolute_error': mean_absolute_error
+    }
+
     if method == 'log':
-        score_func = mean_squared_log_error
+        default_score_func = mean_squared_log_error
     elif method == 'norm':
-        score_func = nmse
+        default_score_func = nmse_func
     else:
-        score_func = mean_squared_error
+        default_score_func = mean_squared_error
 
     Sigma = np.diag(1./(2*weight_vec))
 
@@ -53,7 +59,10 @@ def run(K, B, weight_vec, Y, X, lambda_lasso=0.1, method=None, M=0.2):
 
         MTX2[i] = 2 * Gamma_vec[i] * np.dot(X[i].T, Y[i]).T[0]
 
-    our_scores = []
+    limit = np.array([np.zeros(n) for i in range(E)])
+    for i in range(n):
+        limit[:, i] = lambda_lasso*weight_vec
+    iteration_scores = []
     for iterk in range(K):
         if iterk % 100 == 0:
             print ('iter:', iterk)
@@ -73,44 +82,48 @@ def run(K, B, weight_vec, Y, X, lambda_lasso=0.1, method=None, M=0.2):
         tilde_w = 2 * new_w - prev_w
         new_u = new_u + np.dot(Sigma, np.dot(D, tilde_w))  # chould be negative
 
-        normalized_u = np.where(abs(new_u) >= lambda_lasso)
-        new_u[normalized_u] = lambda_lasso * new_u[normalized_u] / abs(new_u[normalized_u])
+        normalized_u = np.where(abs(new_u) >= limit)
+        new_u[normalized_u] = limit[normalized_u] * new_u[normalized_u] / abs(new_u[normalized_u])
 
         Y_pred = []
         for i in range(N):
             Y_pred.append(np.dot(X[i], new_w[i]))
-
-        our_scores.append(score_func(Y, Y_pred))
+        iteration_scores.append(default_score_func(Y, Y_pred))
 
     # if np.max(abs(new_w - prev_w)) > 5 * 1e-3:
     print (np.max(abs(new_w - prev_w)))
         # raise Exception('not converged')
-    # print ('our mean_squared_log_error', our_scores[-1])
+
+    our_score = {}
+    for score_func_name, score_func in functions.items():
+        our_score[score_func_name] = score_func(Y, Y_pred)
 
     x = np.mean(X, 1)
     y = np.mean(Y, 1)
     model = LinearRegression().fit(x[samplingset], y[samplingset])
-
-    linear_regression_score = score_func(y, model.predict(x))
-    # print ('linear_regression mean_squared_log_error', linear_regression_score)
+    pred_y = model.predict(x)
+    linear_regression_score = {}
+    for score_func_name, score_func in functions.items():
+        linear_regression_score[score_func_name] = score_func(y, pred_y)
 
     y = Y.reshape(-1, 1)
-    x = X.reshape(-1, 2)
+    x = X.reshape(-1, n)
     decision_tree_samplingset = []
     for item in samplingset:
         for i in range(m):
             decision_tree_samplingset.append(m*item+i)
-    decision_tree_non_samplingset = [i for i in range(len(x)) if i not in decision_tree_samplingset]
 
     max_depth = 5
     regressor = DecisionTreeRegressor(max_depth=max_depth)
     regressor.fit(x[decision_tree_samplingset], y[decision_tree_samplingset])
     pred_y = regressor.predict(x)
-    decision_tree_score = score_func(y, pred_y)
-    # print ('decision_tree mean_squared_log_error', decision_tree_score)
+    decision_tree_score = {}
+    for score_func_name, score_func in functions.items():
+        decision_tree_score[score_func_name] = score_func(y, pred_y)
 
+    # decision_tree_non_samplingset = [i for i in range(len(x)) if i not in decision_tree_samplingset]
     # print ('\tdecision tree max_depth:', max_depth,
-    #        '\n\t\ttrain error:', score_func(y[decision_tree_samplingset], regressor.predict(x[decision_tree_samplingset])),
-    #        '\n\t\ttest error:', score_func(y[decision_tree_non_samplingset], regressor.predict(x[decision_tree_non_samplingset])))
+    #        '\n\t\ttrain error:', default_score_func(y[decision_tree_samplingset], regressor.predict(x[decision_tree_samplingset])),
+    #        '\n\t\ttest error:', default_score_func(y[decision_tree_non_samplingset], regressor.predict(x[decision_tree_non_samplingset])))
 
-    return our_scores, linear_regression_score, decision_tree_score
+    return iteration_scores, our_score, linear_regression_score, decision_tree_score
