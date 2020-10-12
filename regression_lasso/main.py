@@ -88,7 +88,7 @@ def run(K, B, weight_vec, Y, X, lambda_lasso=0.1, method=None, M=0.2):
         Y_pred = []
         for i in range(N):
             Y_pred.append(np.dot(X[i], new_w[i]))
-        iteration_scores.append(default_score_func(Y, Y_pred))
+        iteration_scores.append(default_score_func(np.abs(Y), np.abs(Y_pred)))
 
     # if np.max(abs(new_w - prev_w)) > 5 * 1e-3:
     print (np.max(abs(new_w - prev_w)))
@@ -96,22 +96,20 @@ def run(K, B, weight_vec, Y, X, lambda_lasso=0.1, method=None, M=0.2):
 
     our_score = {}
     for score_func_name, score_func in functions.items():
-        our_score[score_func_name] = score_func(Y, Y_pred)
-
-    x = np.mean(X, 1)
-    y = np.mean(Y, 1)
-    model = LinearRegression().fit(x[samplingset], y[samplingset])
-    pred_y = model.predict(x)
-    linear_regression_score = {}
-    for score_func_name, score_func in functions.items():
-        linear_regression_score[score_func_name] = score_func(y, pred_y)
+        our_score[score_func_name] = score_func(np.abs(Y), np.abs(Y_pred))
 
     y = Y.reshape(-1, 1)
     x = X.reshape(-1, n)
     decision_tree_samplingset = []
     for item in samplingset:
         for i in range(m):
-            decision_tree_samplingset.append(m*item+i)
+            decision_tree_samplingset.append(m * item + i)
+
+    model = LinearRegression().fit(x[decision_tree_samplingset], y[decision_tree_samplingset])
+    pred_y = model.predict(x)
+    linear_regression_score = {}
+    for score_func_name, score_func in functions.items():
+        linear_regression_score[score_func_name] = score_func(np.abs(y), np.abs(pred_y))
 
     max_depth = 5
     regressor = DecisionTreeRegressor(max_depth=max_depth)
@@ -119,7 +117,7 @@ def run(K, B, weight_vec, Y, X, lambda_lasso=0.1, method=None, M=0.2):
     pred_y = regressor.predict(x)
     decision_tree_score = {}
     for score_func_name, score_func in functions.items():
-        decision_tree_score[score_func_name] = score_func(y, pred_y)
+        decision_tree_score[score_func_name] = score_func(np.abs(y), np.abs(pred_y))
 
     # decision_tree_non_samplingset = [i for i in range(len(x)) if i not in decision_tree_samplingset]
     # print ('\tdecision tree max_depth:', max_depth,
