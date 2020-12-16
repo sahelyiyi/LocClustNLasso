@@ -11,7 +11,7 @@ def run_reg_sbm(K, lambda_lasso, m, n, N1=150, N2=150, M=0.2):
     # TODO fix this
     m = 1
     M=1.0
-    B, weight_vec = get_B_and_weight_vec(N1, N2, pout=0.001, mu_in=40, mu_out=10)
+    B, weight_vec = get_B_and_weight_vec([N1, N2], pout=0.001, mu_in=40, mu_out=10)
     E, N = B.shape
 
     X = []
@@ -40,4 +40,4 @@ def run_reg_sbm(K, lambda_lasso, m, n, N1=150, N2=150, M=0.2):
 
     return run(K, B, weight_vec, Y, X, lambda_lasso, method='norm', M=M)
 
-# run_reg_sbm(K=1000, lambda_lasso=0.5, m=1, n=10)
+# run_reg_sbm(K=1000, lambda_lasso=0.5, m=1, n=10,)

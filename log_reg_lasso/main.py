@@ -4,6 +4,8 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.metrics import r2_score, mean_squared_log_error, mean_squared_error, mean_absolute_error
 import random
 
+from utils import get_matrices
+
 
 def nmse_func(Y, Y_pred):
     MSE = mean_squared_error(Y, Y_pred)
@@ -26,16 +28,7 @@ def run(K, B, weight_vec, Y, X, lambda_lasso=0.1, method=None, M=0.2):
     else:
         default_score_func = mean_squared_error
 
-    Sigma = np.diag(1./(2*weight_vec))
-
-    D = B
-
-    Gamma_vec = (1.0/(np.sum(abs(B), 0))).T
-    Gamma = np.diag(Gamma_vec)
-
-    if np.linalg.norm(np.dot(Sigma**0.5, D).dot(Gamma**0.5), 2) > 1:
-        print ('product norm', np.linalg.norm(np.dot(Sigma**0.5, D).dot(Gamma**0.5), 2))
-        # raise Exception('higher than 1')
+    Sigma, Gamma, Gamma_vec, D = get_matrices(weight_vec, B)
 
     E, N = B.shape
     m, n = X[0].shape

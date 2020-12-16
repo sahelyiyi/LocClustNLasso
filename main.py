@@ -1,7 +1,7 @@
 import numpy as np
 
-N = 10  # nr of nodes in chain
-K = 100  # nr of iterations used for nLasso
+N = 100  # nr of nodes in chain
+K = 1000  # nr of iterations used for nLasso
 E = N-1  # nr of edges in chain
 
 # Creating B matrix
@@ -22,7 +22,7 @@ weight_vec = np.array([1./x for x in range(1, N)])
 weight_vec = (5.0/4)*np.ones(E)
 eta = 1/4
 eta = 1
-weight_vec[1] = eta
+weight_vec[3] = eta
 # ----------------------
 # weight_vec = weight_vec = (5.0/4)*np.ones(E)
 # weight_vec[1] = eta
@@ -35,6 +35,7 @@ Gamma = np.diag(Gamma_vec)
 weight = np.diag(weight_vec)
 
 lambda_nLasso = 1/3  # nLasso parameter
+lambda_nLasso = 2/10  # nLasso parameter
 
 primSLP = np.ones(N)
 primSLP[N-1] = 0
@@ -66,6 +67,7 @@ hist_y = np.zeros((K, E))
 hist_x = np.zeros((K, N))
 
 alpha = 1/10
+alpha = 1/200
 fac_alpha = 1./(Gamma_vec*alpha+1)  # \in [0, 1]
 
 

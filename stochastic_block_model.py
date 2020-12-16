@@ -1,40 +1,59 @@
-from numpy.random import normal, poisson
+from numpy.random import normal
 from graspy.simulations import sbm
 import numpy as np
+from scipy.sparse import csr_matrix
 
 
-def get_B_and_weight_vec(n1=50, n2=50, pin=0.5, pout=0.01, mu_in=8, mu_out=2):
-    n = [n1, n2]
-    p = [[pin, pout],
-         [pout, pin]]
-    wt = [[normal, normal],
-          [normal, normal]]
-    # wt = [[normal, poisson],
-    #       [poisson, normal]]
-    wtargs = [[dict(loc=mu_in, scale=1), dict(loc=mu_out, scale=1)],
-              [dict(loc=mu_out, scale=1), dict(loc=mu_in, scale=1)]]
-    # wtargs = [[dict(loc=3, scale=1), dict(lam=5)],
-    #           [dict(lam=5), dict(loc=3, scale=1)]]
+def get_B_and_weight_vec(n, pin=0.5, pout=0.01, mu_in=8, mu_out=2):
+    p = []
+    wt = []
+    wtargs = []
+    for i in range(len(n)):
+        sub_p = []
+        sub_wt = []
+        sub_wtargs = []
+        for j in range(len(n)):
+            sub_wt.append(normal)
+            if i == j:
+                sub_p.append(pin)
+                sub_wtargs.append(dict(loc=mu_in, scale=1))
+            else:
+                sub_p.append(pout)
+                sub_wtargs.append(dict(loc=mu_out, scale=1))
+
+        wt.append(sub_wt)
+        p.append(sub_p)
+        wtargs.append(sub_wtargs)
 
     G = sbm(n=n, p=p, wt=wt, wtargs=wtargs)
 
     N = len(G)
-    # print(len(G[G > 0]) / 2)
-    E = int(len(G[G > 0]) / 2)
-    B = np.zeros((E, N))
+    E = int(len(np.argwhere(G > 0))/2)
+    # B = np.zeros((E, N))
     cnt = 0
     weight_vec = np.zeros(E)
+    row = []
+    col = []
+    data = []
     for item in np.argwhere(G > 0):
-        # if cnt % 1000000 == 0:
-        #     print (cnt)
         i, j = item
         if i > j:
             continue
         if i == j:
             print ('nooooo')
-        B[cnt, i] = 1
-        B[cnt, j] = -1
+        # B[cnt, i] = 1
+        # B[cnt, j] = -1
+        row.append(cnt)
+        col.append(i)
+        data.append(1)
+
+        row.append(cnt)
+        col.append(j)
+        data.append(-1)
+
         weight_vec[cnt] = abs(G[i, j])
         cnt += 1
+
+    B = csr_matrix((data, (row, col)), shape=(E, N))
 
     return B, weight_vec
